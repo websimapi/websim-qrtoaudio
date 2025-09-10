@@ -372,7 +372,7 @@ class AudioQRApp {
 
         // Update counter
         if (this.slideCounter) {
-            this.slideCounter.textContent = `${this.slideIndex + 1} / ${this.slides.length}`;
+            this.slideCounter.textContent = `Part ${this.slideIndex + 1} of ${this.slides.length}`;
         }
     }
 

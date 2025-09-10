@@ -107,16 +107,10 @@
 }
 
 .slide-counter {
-    position: absolute;
-    top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.6);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    z-index: 2;
+    text-align: center;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #555;
 }
 
 .slideshow-controls {
