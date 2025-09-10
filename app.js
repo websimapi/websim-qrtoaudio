@@ -256,8 +256,8 @@ class AudioQRApp {
         this.qrSection.appendChild(header);
         
         // Generate QR code for each chunk
-        chunks.forEach((chunk, index) => {
-            this.createQRCodeElement(chunk, index + 1, chunks.length);
+        chunks.forEach(async (chunk, index) => {
+            await this.createQRCodeElement(chunk, index + 1, chunks.length);
         });
         
         this.qrSection.classList.add('active');
@@ -271,7 +271,7 @@ class AudioQRApp {
         return chunks;
     }
 
-    createQRCodeElement(chunkData, partNumber, totalParts) {
+    async createQRCodeElement(chunkData, partNumber, totalParts) {
         const qrContainer = document.createElement('div');
         qrContainer.className = 'qr-item';
         
@@ -286,14 +286,20 @@ class AudioQRApp {
         
         const url = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(chunkData)}&part=${partNumber}&total=${totalParts}`;
         
-        QRCode.toCanvas(canvas, url, {
-            width: 200,
-            margin: 2,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        });
+        try {
+            await QRCode.toCanvas(canvas, url, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            });
+        } catch (error) {
+            console.error('Error generating QR code:', error);
+            this.showStatus(`Error generating QR code for part ${partNumber}`, 'error');
+            return;
+        }
         
         canvasContainer.appendChild(canvas);
         
