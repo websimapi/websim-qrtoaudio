@@ -6,6 +6,7 @@
     <title>Audio to QR Code</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
     <div class="container">
@@ -53,6 +54,14 @@
 
             <div class="qr-section" id="qrSection">
                 <!-- QR Codes will be generated here -->
+            </div>
+
+            <div class="scanner-section" id="scannerSection">
+                <h2>Scan QR Code Parts</h2>
+                <div id="qr-reader" style="width: 100%; max-width: 500px; margin: 0 auto;"></div>
+                <div id="scanStatus" class="status"></div>
+                <div id="missingPartsInfo"></div>
+                <button id="stopScanBtn" class="record-btn" style="margin-top: 20px; display: none;">Stop Scanning</button>
             </div>
         </main>
     </div>

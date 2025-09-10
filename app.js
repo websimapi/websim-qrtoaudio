@@ -6,10 +6,11 @@ class AudioQRApp {
         this.currentAudio = null;
         this.recordingStartTime = null;
         this.maxDataSize = 1500; // bytes (reduced for more reliable QR scanning)
+        this.html5QrCode = null;
         
         this.initializeElements();
         this.bindEvents();
-        this.checkForDataParameter(); // Check for scanned QR data
+        this.handleScannedData(); // Check for scanned QR data on load
     }
 
     initializeElements() {
@@ -28,14 +29,29 @@ class AudioQRApp {
         this.qrSection = document.getElementById('qrSection');
         this.duration = document.getElementById('duration');
         this.dataSize = document.getElementById('dataSize');
+
+        // Scanner elements
+        this.scannerSection = document.getElementById('scannerSection');
+        this.qrReader = document.getElementById('qr-reader');
+        this.scanStatus = document.getElementById('scanStatus');
+        this.missingPartsInfo = document.getElementById('missingPartsInfo');
+        this.stopScanBtn = document.getElementById('stopScanBtn');
     }
 
     bindEvents() {
-        this.recordBtn.addEventListener('click', () => this.toggleRecording());
-        this.trimBtn.addEventListener('click', () => this.trimAudio());
-        
-        this.startTime.addEventListener('input', () => this.updateTrimLabels());
-        this.endTime.addEventListener('input', () => this.updateTrimLabels());
+        if (this.recordBtn) {
+            this.recordBtn.addEventListener('click', () => this.toggleRecording());
+        }
+        if (this.trimBtn) {
+            this.trimBtn.addEventListener('click', () => this.trimAudio());
+        }
+        if (this.startTime) {
+            this.startTime.addEventListener('input', () => this.updateTrimLabels());
+            this.endTime.addEventListener('input', () => this.updateTrimLabels());
+        }
+        if (this.stopScanBtn) {
+            this.stopScanBtn.addEventListener('click', () => this.stopScanning());
+        }
     }
 
     async toggleRecording() {
@@ -210,7 +226,7 @@ class AudioQRApp {
         const qrUrlDiv = this.qrSection.querySelector('.qr-url');
         const downloadBtn = this.qrSection.querySelector('.download-btn');
         
-        const url = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(base64Data)}`;
+        const url = `https://websim.com/@api/qrtoaudio?data=${encodeURIComponent(base64Data)}`;
         
         try {
             new QRious({
@@ -242,23 +258,26 @@ class AudioQRApp {
 
     async generateMultipleQRCodes(base64Data) {
         const chunks = this.splitDataIntoChunks(base64Data, this.maxDataSize);
+        const sessionId = `audio-session-${Date.now()}`;
         this.showStatus(`Audio split into ${chunks.length} QR codes`, 'success');
         
         // Clear existing QR section and prepare for multiple codes
         this.qrSection.innerHTML = `
             <h2>QR Codes (${chunks.length} parts)</h2>
+            <p>Scan each part in any order to play the audio.</p>
             <div class="qr-list"></div>
         `;
         
         const qrList = this.qrSection.querySelector('.qr-list');
-        
+        const baseUrl = `https://websim.com/@api/qrtoaudio`;
+
         // Generate QR code for each chunk
         for (let i = 0; i < chunks.length; i++) {
             const qrItem = this.createQRCodeElement(chunks[i], i + 1, chunks.length);
             qrList.appendChild(qrItem);
             // We need to query the canvas inside the newly added element
             const canvas = qrItem.querySelector('canvas');
-            const url = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(chunks[i])}&part=${i + 1}&total=${chunks.length}`;
+            const url = `${baseUrl}?id=${sessionId}&part=${i + 1}&total=${chunks.length}&data=${encodeURIComponent(chunks[i])}`;
             
             try {
                  new QRious({
@@ -342,14 +361,15 @@ class AudioQRApp {
         link.click();
     }
 
-    showStatus(message, type) {
-        this.status.textContent = message;
-        this.status.className = `status ${type}`;
+    showStatus(message, type, element = this.status) {
+        element.textContent = message;
+        element.className = `status ${type}`;
+        element.style.display = 'block';
         
-        if (type === 'success') {
+        if (type === 'success' && element === this.status) {
             setTimeout(() => {
-                this.status.classList.remove('success');
-                this.status.style.display = 'none';
+                element.classList.remove('success');
+                element.style.display = 'none';
             }, 3000);
         }
     }
@@ -360,12 +380,110 @@ class AudioQRApp {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
-    checkForDataParameter() {
+    handleScannedData() {
         const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        const part = urlParams.get('part');
+        const total = urlParams.get('total');
         const data = urlParams.get('data');
-        
-        if (data) {
+
+        // Handle single-part QR from older versions or simple cases
+        if (data && !id) {
             this.playScannedAudio(data);
+            return;
+        }
+
+        // Handle multi-part QR codes
+        if (id && part && total && data) {
+            this.showStatus('Processing scanned part...', 'info');
+            
+            // Store the part
+            const partKey = `qr_audio_${id}_part_${part}`;
+            sessionStorage.setItem(partKey, data);
+            
+            const totalKey = `qr_audio_${id}_total`;
+            sessionStorage.setItem(totalKey, total);
+
+            // Check if we have all parts
+            const collectedParts = [];
+            let allPartsFound = true;
+            for (let i = 1; i <= total; i++) {
+                const currentPart = sessionStorage.getItem(`qr_audio_${id}_part_${i}`);
+                if (currentPart) {
+                    collectedParts.push(currentPart);
+                } else {
+                    allPartsFound = false;
+                }
+            }
+
+            if (allPartsFound) {
+                // Assemble and play
+                const fullBase64 = collectedParts.join('');
+                this.playScannedAudio(fullBase64);
+
+                // Clean up session storage
+                for (let i = 1; i <= total; i++) {
+                    sessionStorage.removeItem(`qr_audio_${id}_part_${i}`);
+                }
+                sessionStorage.removeItem(totalKey);
+            } else {
+                // Ask for the next part
+                this.promptForNextPart(id, parseInt(total));
+            }
+        }
+    }
+    
+    promptForNextPart(id, total) {
+        // Hide main recording UI
+        document.querySelector('main > .recording-section').style.display = 'none';
+        this.scannerSection.style.display = 'block';
+
+        const missing = [];
+        for (let i = 1; i <= total; i++) {
+            if (!sessionStorage.getItem(`qr_audio_${id}_part_${i}`)) {
+                missing.push(i);
+            }
+        }
+        
+        const collectedCount = total - missing.length;
+
+        this.showStatus(`Collected ${collectedCount} of ${total} parts.`, 'info', this.scanStatus);
+        this.missingPartsInfo.innerHTML = `Please scan one of the remaining parts: <strong>${missing.join(', ')}</strong>`;
+        
+        this.startScanning();
+    }
+
+    startScanning() {
+        this.stopScanBtn.style.display = 'inline-block';
+        this.html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        const onScanSuccess = (decodedText, decodedResult) => {
+            this.stopScanning();
+            this.showStatus('QR Code detected! Reloading...', 'success', this.scanStatus);
+            // Redirect to the URL from the QR code to process the next part
+            window.location.href = decodedText;
+        };
+
+        const onScanFailure = (error) => {
+            // handle scan failure, usually better to ignore and keep scanning.
+        };
+
+        this.html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+            .catch(err => {
+                this.showStatus('Could not start scanner. Please grant camera permission.', 'error', this.scanStatus);
+                console.error("Unable to start scanning.", err);
+            });
+    }
+
+    stopScanning() {
+        if (this.html5QrCode && this.html5QrCode.isScanning) {
+            this.html5QrCode.stop()
+                .then(() => {
+                    this.showStatus('Scanner stopped.', 'info', this.scanStatus);
+                    this.stopScanBtn.style.display = 'none';
+                })
+                .catch(err => console.error("Failed to stop scanner.", err));
         }
     }
 
