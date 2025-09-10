@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio to QR Code</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Audio to QR Code</h1>
+            <p>Record audio and generate QR codes</p>
+        </header>
+
+        <main>
+            <div class="recording-section">
+                <div class="record-controls">
+                    <button id="recordBtn" class="record-btn">
+                        <span class="record-icon">🎙️</span>
+                        <span class="record-text">Start Recording</span>
+                    </button>
+                    <div class="recording-indicator" id="recordingIndicator">
+                        <div class="pulse"></div>
+                        <span>Recording...</span>
+                    </div>
+                </div>
+                
+                <div class="audio-info" id="audioInfo">
+                    <div class="duration">Duration: <span id="duration">0:00</span></div>
+                    <div class="data-size">Data size: <span id="dataSize">0 KB</span></div>
+                </div>
+            </div>
+
+            <div class="audio-preview" id="audioPreview">
+                <audio controls id="audioPlayer"></audio>
+                <div class="trim-controls" id="trimControls">
+                    <label>Trim audio (if data too large):</label>
+                    <div class="trim-inputs">
+                        <input type="range" id="startTime" min="0" max="100" value="0">
+                        <input type="range" id="endTime" min="0" max="100" value="100">
+                    </div>
+                    <div class="trim-labels">
+                        <span>Start: <span id="startLabel">0:00</span></span>
+                        <span>End: <span id="endLabel">0:00</span></span>
+                    </div>
+                    <button id="trimBtn" class="trim-btn">Apply Trim</button>
+                </div>
+            </div>
+
+            <div class="status" id="status"></div>
+
+            <div class="qr-section" id="qrSection">
+                <h2>QR Code</h2>
+                <div class="qr-container">
+                    <canvas id="qrcode"></canvas>
+                </div>
+                <div class="qr-url" id="qrUrl"></div>
+                <button id="downloadBtn" class="download-btn">Download QR Code</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
