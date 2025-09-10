@@ -226,7 +226,7 @@ class AudioQRApp {
         const qrUrlDiv = this.qrSection.querySelector('.qr-url');
         const downloadBtn = this.qrSection.querySelector('.download-btn');
         
-        const url = `https://websim.com/@api/qrtoaudio?data=${encodeURIComponent(base64Data)}`;
+        const url = `https://qrtoaudio.on.websim.com?data=${encodeURIComponent(base64Data)}`;
         
         try {
             new QRious({
@@ -269,7 +269,7 @@ class AudioQRApp {
         `;
         
         const qrList = this.qrSection.querySelector('.qr-list');
-        const baseUrl = `https://websim.com/@api/qrtoaudio`;
+        const baseUrl = `https://qrtoaudio.on.websim.com`;
 
         // Generate QR code for each chunk
         for (let i = 0; i < chunks.length; i++) {
