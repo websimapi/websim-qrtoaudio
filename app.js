@@ -8,6 +8,12 @@ class AudioQRApp {
         this.maxDataSize = 500; // bytes (further reduced for easier scanning)
         this.html5QrCode = null;
         
+        // Slideshow properties
+        this.slideIndex = 0;
+        this.slides = [];
+        this.slideshowInterval = null;
+        this.slideshowSpeed = 700; // ms per slide
+        
         this.initializeElements();
         this.bindEvents();
         this.handleScannedData(); // Check for scanned QR data on load
@@ -36,6 +42,12 @@ class AudioQRApp {
         this.scanStatus = document.getElementById('scanStatus');
         this.missingPartsInfo = document.getElementById('missingPartsInfo');
         this.stopScanBtn = document.getElementById('stopScanBtn');
+
+        // Slideshow elements
+        this.playPauseBtn = document.getElementById('playPauseBtn');
+        this.prevSlideBtn = document.getElementById('prevSlideBtn');
+        this.nextSlideBtn = document.getElementById('nextSlideBtn');
+        this.slideCounter = document.getElementById('slideCounter');
     }
 
     bindEvents() {
@@ -52,11 +64,28 @@ class AudioQRApp {
         if (this.stopScanBtn) {
             this.stopScanBtn.addEventListener('click', () => this.stopScanning());
         }
+        // Slideshow events
+        if (this.playPauseBtn) {
+            this.playPauseBtn.addEventListener('click', () => this.toggleSlideshow());
+        }
+        if (this.prevSlideBtn) {
+            this.prevSlideBtn.addEventListener('click', () => {
+                this.stopSlideshow();
+                this.showSlide(this.slideIndex - 1);
+            });
+        }
+        if (this.nextSlideBtn) {
+            this.nextSlideBtn.addEventListener('click', () => {
+                this.stopSlideshow();
+                this.showSlide(this.slideIndex + 1);
+            });
+        }
     }
 
     async toggleRecording() {
         if (!this.isRecording) {
             await this.startRecording();
+            this.stopSlideshow();
         } else {
             this.stopRecording();
         }
@@ -88,6 +117,10 @@ class AudioQRApp {
             this.isRecording = true;
             this.updateRecordingUI();
             this.startDurationTimer();
+            
+            // Hide QR section when starting a new recording
+            this.qrSection.classList.remove('active');
+            this.qrSection.querySelector('.slides-wrapper').innerHTML = '';
             
         } catch (error) {
             this.showStatus('Error accessing microphone. Please check permissions.', 'error');
@@ -215,11 +248,11 @@ class AudioQRApp {
         // Clear existing content and create fresh structure
         this.qrSection.innerHTML = `
             <h2>QR Code</h2>
-            <div class="qr-container">
+            <div class="qr-container" style="background: #fff; padding: 10px; display: inline-block; border-radius: 8px;">
                 <canvas></canvas>
             </div>
             <div class="qr-url"></div>
-            <button class="download-btn">Download QR Code</button>
+            <button class="download-btn" style="margin-top: 10px;">Download QR Code</button>
         `;
         
         const canvas = this.qrSection.querySelector('canvas');
@@ -257,6 +290,7 @@ class AudioQRApp {
     }
 
     async generateMultipleQRCodes(base64Data) {
+        this.stopSlideshow(); // Ensure any previous slideshow is stopped
         const chunks = this.splitDataIntoChunks(base64Data, this.maxDataSize);
         const sessionId = `audio-session-${Date.now()}`;
         this.showStatus(`Audio split into ${chunks.length} QR codes`, 'success');
@@ -265,37 +299,107 @@ class AudioQRApp {
         this.qrSection.innerHTML = `
             <h2>QR Codes (${chunks.length} parts)</h2>
             <p>Scan each part in any order to play the audio.</p>
-            <div class="qr-list"></div>
+            <div class="slides-wrapper"></div>
         `;
         
-        const qrList = this.qrSection.querySelector('.qr-list');
-        const baseUrl = `https://qrtoaudio.on.websim.com`;
+        const slidesWrapper = this.qrSection.querySelector('.slides-wrapper');
+        slidesWrapper.innerHTML = ''; // Clear previous slides
+        this.slides = []; // Reset slides array
 
-        // Generate QR code for each chunk
+        const baseUrl = `https://qrtoaudio.on.websim.com`;
+        
         for (let i = 0; i < chunks.length; i++) {
-            const qrItem = this.createQRCodeElement(chunks[i], i + 1, chunks.length);
-            qrList.appendChild(qrItem);
-            // We need to query the canvas inside the newly added element
-            const canvas = qrItem.querySelector('canvas');
-            const url = `${baseUrl}?id=${sessionId}&part=${i + 1}&total=${chunks.length}&data=${encodeURIComponent(chunks[i])}`;
+            const partNumber = i + 1;
+            const slide = this.createSlideElement(partNumber, chunks.length);
+            slidesWrapper.appendChild(slide);
+            this.slides.push(slide);
+
+            const canvas = slide.querySelector('canvas');
+            const url = `${baseUrl}?id=${sessionId}&part=${partNumber}&total=${chunks.length}&data=${encodeURIComponent(chunks[i])}`;
             
             try {
                  new QRious({
                     element: canvas,
                     value: url,
-                    size: 220,
+                    size: 250,
                     padding: 10,
                     background: '#FFFFFF',
                     foreground: '#000000',
                     level: 'L'
                 });
             } catch (error) {
-                 console.error(`Error generating QR code for part ${i + 1}:`, error);
-                 this.showStatus(`Error generating QR code for part ${i + 1}`, 'error');
+                 console.error(`Error generating QR code for part ${partNumber}:`, error);
+                 this.showStatus(`Error generating QR code for part ${partNumber}`, 'error');
             }
         }
         
+        this.slideIndex = 0;
+        this.showSlide(this.slideIndex);
         this.qrSection.classList.add('active');
+    }
+    
+    createSlideElement(partNumber, totalParts) {
+        const slide = document.createElement('div');
+        slide.className = 'qr-slide';
+
+        const title = document.createElement('h3');
+        title.textContent = `Part ${partNumber} of ${totalParts}`;
+        
+        const canvas = document.createElement('canvas');
+        
+        slide.appendChild(canvas);
+        slide.appendChild(title);
+        
+        return slide;
+    }
+
+    showSlide(index) {
+        if (!this.slides || this.slides.length === 0) return;
+
+        // Wrap around logic
+        if (index >= this.slides.length) {
+            this.slideIndex = 0;
+        } else if (index < 0) {
+            this.slideIndex = this.slides.length - 1;
+        } else {
+            this.slideIndex = index;
+        }
+
+        // Hide all slides
+        this.slides.forEach(slide => slide.classList.remove('active'));
+
+        // Show the current slide
+        this.slides[this.slideIndex].classList.add('active');
+
+        // Update counter
+        if (this.slideCounter) {
+            this.slideCounter.textContent = `${this.slideIndex + 1} / ${this.slides.length}`;
+        }
+    }
+
+    toggleSlideshow() {
+        if (this.slideshowInterval) {
+            this.stopSlideshow();
+        } else {
+            this.startSlideshow();
+        }
+    }
+
+    startSlideshow() {
+        if (this.slideshowInterval) return; // Already running
+        this.playPauseBtn.textContent = '⏹️ Stop Scan';
+        this.playPauseBtn.classList.add('playing');
+        
+        this.slideshowInterval = setInterval(() => {
+            this.showSlide(this.slideIndex + 1);
+        }, this.slideshowSpeed);
+    }
+
+    stopSlideshow() {
+        clearInterval(this.slideshowInterval);
+        this.slideshowInterval = null;
+        this.playPauseBtn.textContent = '▶️ Rapid Scan';
+        this.playPauseBtn.classList.remove('playing');
     }
 
     splitDataIntoChunks(data, maxChunkSize) {
