@@ -229,7 +229,7 @@ audio {
     display: block;
 }
 
-.qr-section h2 {
+.qr-section > h2 {
     margin-bottom: 20px;
     font-size: 24px;
 }
@@ -269,14 +269,27 @@ audio {
     background: #1e7e34;
 }
 
+.qr-list {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 20px;
+    padding: 10px;
+    margin: 0 -16px; /* Extend to screen edges on mobile */
+}
+
 .qr-item {
+    flex: 0 0 90%;
+    scroll-snap-align: center;
     margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f8f9fa;
 }
 
 .qr-item:last-child {
-    border-bottom: none;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .qr-item h3 {
