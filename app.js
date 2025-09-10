@@ -5,7 +5,7 @@ class AudioQRApp {
         this.isRecording = false;
         this.currentAudio = null;
         this.recordingStartTime = null;
-        this.maxDataSize = 1500; // bytes (reduced for more reliable QR scanning)
+        this.maxDataSize = 500; // bytes (further reduced for easier scanning)
         this.html5QrCode = null;
         
         this.initializeElements();
