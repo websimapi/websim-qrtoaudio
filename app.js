@@ -33,6 +33,8 @@ class AudioQRApp {
         this.trimBtn = document.getElementById('trimBtn');
         this.status = document.getElementById('status');
         this.qrSection = document.getElementById('qrSection');
+        this.qrSectionTitle = document.getElementById('qrSectionTitle');
+        this.qrSectionSubtitle = document.getElementById('qrSectionSubtitle');
         this.duration = document.getElementById('duration');
         this.dataSize = document.getElementById('dataSize');
 
@@ -295,13 +297,10 @@ class AudioQRApp {
         const sessionId = `audio-session-${Date.now()}`;
         this.showStatus(`Audio split into ${chunks.length} QR codes`, 'success');
         
-        // Clear existing QR section and prepare for multiple codes
-        this.qrSection.innerHTML = `
-            <h2>QR Codes (${chunks.length} parts)</h2>
-            <p>Scan each part in any order to play the audio.</p>
-            <div class="slides-wrapper"></div>
-        `;
-        
+        this.qrSectionTitle.textContent = `QR Codes (${chunks.length} parts)`;
+        this.qrSectionSubtitle.textContent = `Scan each part in any order to play the audio.`;
+        this.qrSectionSubtitle.style.display = 'block';
+
         const slidesWrapper = this.qrSection.querySelector('.slides-wrapper');
         slidesWrapper.innerHTML = ''; // Clear previous slides
         this.slides = []; // Reset slides array
