@@ -243,7 +243,7 @@ class AudioQRApp {
         }
     }
 
-    generateMultipleQRCodes(base64Data) {
+    async generateMultipleQRCodes(base64Data) {
         const chunks = this.splitDataIntoChunks(base64Data, this.maxDataSize);
         this.showStatus(`Audio split into ${chunks.length} QR codes`, 'success');
         
@@ -255,10 +255,10 @@ class AudioQRApp {
         header.textContent = `QR Codes (${chunks.length} parts)`;
         this.qrSection.appendChild(header);
         
-        // Generate QR code for each chunk
-        chunks.forEach(async (chunk, index) => {
-            await this.createQRCodeElement(chunk, index + 1, chunks.length);
-        });
+        // Generate QR code for each chunk - use for...of instead of forEach for proper async handling
+        for (let i = 0; i < chunks.length; i++) {
+            await this.createQRCodeElement(chunks[i], i + 1, chunks.length);
+        }
         
         this.qrSection.classList.add('active');
     }
