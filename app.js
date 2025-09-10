@@ -26,9 +26,6 @@ class AudioQRApp {
         this.trimBtn = document.getElementById('trimBtn');
         this.status = document.getElementById('status');
         this.qrSection = document.getElementById('qrSection');
-        this.qrCanvas = document.getElementById('qrcode');
-        this.qrUrl = document.getElementById('qrUrl');
-        this.downloadBtn = document.getElementById('downloadBtn');
         this.duration = document.getElementById('duration');
         this.dataSize = document.getElementById('dataSize');
     }
@@ -36,7 +33,6 @@ class AudioQRApp {
     bindEvents() {
         this.recordBtn.addEventListener('click', () => this.toggleRecording());
         this.trimBtn.addEventListener('click', () => this.trimAudio());
-        this.downloadBtn.addEventListener('click', () => this.downloadQR());
         
         this.startTime.addEventListener('input', () => this.updateTrimLabels());
         this.endTime.addEventListener('input', () => this.updateTrimLabels());
