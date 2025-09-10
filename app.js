@@ -12,7 +12,7 @@ class AudioQRApp {
         this.slideIndex = 0;
         this.slides = [];
         this.slideshowInterval = null;
-        this.slideshowSpeed = 700; // ms per slide
+        this.slideshowSpeed = 1000; // 1 second per slide
         
         this.initializeElements();
         this.bindEvents();
