@@ -195,7 +195,7 @@ class AudioQRApp {
         return blob;
     }
 
-    async generateQRCode(base64Data) {
+    generateQRCode(base64Data) {
         // Clear existing content and create fresh structure
         this.qrSection.innerHTML = `
             <h2>QR Code</h2>
@@ -213,13 +213,14 @@ class AudioQRApp {
         const url = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(base64Data)}`;
         
         try {
-            await QRCode.toCanvas(canvas, url, {
-                width: 256,
-                margin: 2,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                }
+            new QRious({
+                element: canvas,
+                value: url,
+                size: 256,
+                padding: 10, // Corresponds to margin: 2 in previous library
+                background: '#FFFFFF',
+                foreground: '#000000',
+                level: 'L' // Low correction, handles more data
             });
             
             qrUrlDiv.textContent = url.substring(0, 100) + '...';
@@ -260,10 +261,14 @@ class AudioQRApp {
             const url = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(chunks[i])}&part=${i + 1}&total=${chunks.length}`;
             
             try {
-                await QRCode.toCanvas(canvas, url, {
-                    width: 220,
-                    margin: 2,
-                    color: { dark: '#000000', light: '#FFFFFF' }
+                 new QRious({
+                    element: canvas,
+                    value: url,
+                    size: 220,
+                    padding: 10,
+                    background: '#FFFFFF',
+                    foreground: '#000000',
+                    level: 'L'
                 });
             } catch (error) {
                  console.error(`Error generating QR code for part ${i + 1}:`, error);
