@@ -5,10 +5,11 @@ class AudioQRApp {
         this.isRecording = false;
         this.currentAudio = null;
         this.recordingStartTime = null;
-        this.maxDataSize = 2000; // bytes (QR code limit roughly 2KB for reliable scanning)
+        this.maxDataSize = 1500; // bytes (reduced for more reliable QR scanning)
         
         this.initializeElements();
         this.bindEvents();
+        this.checkForDataParameter(); // Check for scanned QR data
     }
 
     initializeElements() {
@@ -129,11 +130,8 @@ class AudioQRApp {
         this.dataSize.textContent = `${(dataSize / 1024).toFixed(1)} KB`;
         
         if (dataSize > this.maxDataSize) {
-            this.showStatus(
-                `Audio data (${(dataSize / 1024).toFixed(1)} KB) exceeds QR code limit (${(this.maxDataSize / 1024).toFixed(1)} KB). Please trim the audio.`, 
-                'warning'
-            );
-            this.setupTrimControls();
+            // Auto-split into multiple QR codes
+            this.generateMultipleQRCodes(base64Data);
         } else {
             this.generateQRCode(base64Data);
         }
@@ -202,10 +200,24 @@ class AudioQRApp {
     }
 
     async generateQRCode(base64Data) {
-        const url = `https://websim.com/@api/qrtoaudio?data=${encodeURIComponent(base64Data)}`;
+        // Clear existing content and create fresh structure
+        this.qrSection.innerHTML = `
+            <h2>QR Code</h2>
+            <div class="qr-container">
+                <canvas id="qrcode"></canvas>
+            </div>
+            <div class="qr-url" id="qrUrl"></div>
+            <button id="downloadBtn" class="download-btn">Download QR Code</button>
+        `;
+        
+        const canvas = document.getElementById('qrcode');
+        const qrUrlDiv = document.getElementById('qrUrl');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        const url = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(base64Data)}`;
         
         try {
-            await QRCode.toCanvas(this.qrCanvas, url, {
+            await QRCode.toCanvas(canvas, url, {
                 width: 256,
                 margin: 2,
                 color: {
@@ -214,14 +226,98 @@ class AudioQRApp {
                 }
             });
             
-            this.qrUrl.textContent = url;
+            qrUrlDiv.textContent = url.substring(0, 100) + '...';
             this.qrSection.classList.add('active');
             this.showStatus('QR code generated successfully!', 'success');
+            
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.download = 'audio-qr-code.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            };
             
         } catch (error) {
             this.showStatus('Error generating QR code', 'error');
             console.error('QR code error:', error);
         }
+    }
+
+    generateMultipleQRCodes(base64Data) {
+        const chunks = this.splitDataIntoChunks(base64Data, this.maxDataSize);
+        this.showStatus(`Audio split into ${chunks.length} QR codes`, 'success');
+        
+        // Clear existing QR section
+        this.qrSection.innerHTML = '';
+        
+        // Create header
+        const header = document.createElement('h2');
+        header.textContent = `QR Codes (${chunks.length} parts)`;
+        this.qrSection.appendChild(header);
+        
+        // Generate QR code for each chunk
+        chunks.forEach((chunk, index) => {
+            this.createQRCodeElement(chunk, index + 1, chunks.length);
+        });
+        
+        this.qrSection.classList.add('active');
+    }
+
+    splitDataIntoChunks(data, maxChunkSize) {
+        const chunks = [];
+        for (let i = 0; i < data.length; i += maxChunkSize) {
+            chunks.push(data.slice(i, i + maxChunkSize));
+        }
+        return chunks;
+    }
+
+    createQRCodeElement(chunkData, partNumber, totalParts) {
+        const qrContainer = document.createElement('div');
+        qrContainer.className = 'qr-item';
+        
+        const title = document.createElement('h3');
+        title.textContent = `Part ${partNumber} of ${totalParts}`;
+        title.style.marginBottom = '10px';
+        
+        const canvasContainer = document.createElement('div');
+        canvasContainer.className = 'qr-container';
+        
+        const canvas = document.createElement('canvas');
+        
+        const url = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(chunkData)}&part=${partNumber}&total=${totalParts}`;
+        
+        QRCode.toCanvas(canvas, url, {
+            width: 200,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+        
+        canvasContainer.appendChild(canvas);
+        
+        const urlDiv = document.createElement('div');
+        urlDiv.className = 'qr-url';
+        urlDiv.textContent = `Part ${partNumber}: ${url.substring(0, 50)}...`;
+        
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'download-btn';
+        downloadBtn.textContent = `Download Part ${partNumber}`;
+        downloadBtn.style.marginBottom = '20px';
+        downloadBtn.onclick = () => {
+            const link = document.createElement('a');
+            link.download = `audio-qr-part-${partNumber}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        };
+        
+        qrContainer.appendChild(title);
+        qrContainer.appendChild(canvasContainer);
+        qrContainer.appendChild(urlDiv);
+        qrContainer.appendChild(downloadBtn);
+        
+        this.qrSection.appendChild(qrContainer);
     }
 
     async blobToBase64(blob) {
@@ -260,10 +356,64 @@ class AudioQRApp {
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
+
+    checkForDataParameter() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const data = urlParams.get('data');
+        
+        if (data) {
+            this.playScannedAudio(data);
+        }
+    }
+
+    async playScannedAudio(base64Data) {
+        try {
+            // Convert base64 back to audio blob
+            const audioBlob = this.base64ToBlob(base64Data, 'audio/webm');
+            const audioURL = URL.createObjectURL(audioBlob);
+            
+            // Show audio player
+            this.audioPlayer.src = audioURL;
+            this.audioPreview.classList.add('active');
+            
+            // Auto-play the audio
+            this.audioPlayer.play();
+            
+            this.showStatus('Playing scanned audio', 'success');
+            
+            // Hide recording controls when playing scanned audio
+            this.recordBtn.style.display = 'none';
+            this.audioInfo.style.display = 'none';
+            
+            // Add a "Record New" button
+            const recordNewBtn = document.createElement('button');
+            recordNewBtn.textContent = 'Record New Audio';
+            recordNewBtn.className = 'record-btn';
+            recordNewBtn.style.marginTop = '20px';
+            recordNewBtn.onclick = () => {
+                window.location.href = window.location.pathname; // Reload page without parameters
+            };
+            
+            this.audioPreview.appendChild(recordNewBtn);
+            
+        } catch (error) {
+            this.showStatus('Error playing scanned audio', 'error');
+            console.error('Error playing scanned audio:', error);
+        }
+    }
+
+    base64ToBlob(base64, mimeType) {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+    }
 }
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new AudioQRApp();
 });
-
